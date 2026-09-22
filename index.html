@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Laboratório de movimento — anime.js</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#DCE3EA; --surface:#EEF2F6; --ink:#14213D; --muted:#52607A;
+  --line:#B9C4D2; --accent:#2F4BFF; --warm:#FF9F1C; --mint:#1FAE7A; --pink:#E8457A;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F1830; --surface:#17223F; --ink:#E6ECF5; --muted:#9AA8C2;
+    --line:#2A3960; --accent:#7C8CFF; --warm:#FFB547; --mint:#3DD6A0; --pink:#FF6B9A;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F1830; --surface:#17223F; --ink:#E6ECF5; --muted:#9AA8C2;
+  --line:#2A3960; --accent:#7C8CFF; --warm:#FFB547; --mint:#3DD6A0; --pink:#FF6B9A;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 64px); scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{margin:0; background:var(--bg); color:var(--ink); font-family:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif; font-size:1.0625rem; line-height:1.55; overflow-x:hidden}
+.wrap{max-width:980px; margin:0 auto; padding:0 1.25rem}
+code{font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace; font-size:.88em; background:var(--surface); padding:.08em .35em; border-radius:6px}
+
+/* Navegação */
+nav{position:sticky; top:env(safe-area-inset-top,0px); z-index:20; background:var(--bg); border-bottom:1px solid var(--line)}
+nav .wrap{display:flex; gap:.4rem; overflow-x:auto; padding-top:.6rem; padding-bottom:.6rem; scrollbar-width:none}
+nav .wrap::-webkit-scrollbar{display:none}
+nav a{flex:0 0 auto; text-decoration:none; color:var(--ink); font-weight:600; font-size:.88rem; padding:.35rem .8rem; border-radius:999px; border:1.5px solid var(--line)}
+nav a:hover{border-color:var(--accent); color:var(--accent)}
+
+/* Hero */
+header{padding:3rem 0 1rem}
+h1{font-family:"Bricolage Grotesque","Arial Narrow",sans-serif; font-weight:800; font-size:clamp(2.8rem,10vw,6.2rem); line-height:.93; letter-spacing:-.035em; margin:0 0 1rem; max-width:11ch; cursor:pointer; user-select:none}
+h1 .word{display:inline-block; overflow:hidden; vertical-align:bottom; padding-bottom:.08em}
+h1.loaded .word{overflow:visible}
+.ch{display:inline-block; will-change:transform}
+.lede{color:var(--muted); max-width:48ch; margin:0}
+
+.grid{--cols:17; display:grid; grid-template-columns:repeat(var(--cols),1fr); gap:clamp(6px,1.6vw,14px); margin:2rem 0 .75rem; padding:clamp(14px,3vw,28px); background:var(--surface); border-radius:20px; cursor:crosshair; touch-action:manipulation}
+.dot{aspect-ratio:1; border-radius:50%; background:var(--ink); opacity:.85}
+.hint{font-size:.92rem; color:var(--muted); display:flex; gap:.6rem 1rem; align-items:center; flex-wrap:wrap}
+
+/* Seções */
+section{padding:3rem 0 .5rem; border-top:1px solid var(--line); margin-top:2.5rem}
+h2{font-family:"Bricolage Grotesque","Arial Narrow",sans-serif; font-weight:700; font-size:clamp(1.8rem,5vw,2.6rem); letter-spacing:-.02em; line-height:1.05; margin:0 0 .5rem}
+section > p{color:var(--muted); max-width:60ch; margin:0 0 1.5rem}
+.stage{background:var(--surface); border-radius:20px; padding:1.25rem; position:relative; overflow:hidden}
+.controls{display:flex; gap:.5rem; flex-wrap:wrap; align-items:center; margin-top:1rem}
+.controls .sep{width:1px; height:28px; background:var(--line); margin:0 .25rem}
+
+button{font:inherit; font-weight:600; font-size:.93rem; padding:.55rem 1.05rem; border-radius:999px; cursor:pointer; border:2px solid var(--ink); background:transparent; color:var(--ink)}
+button.primary{background:var(--ink); color:var(--bg)}
+button:hover{border-color:var(--accent)}
+button.primary:hover{background:var(--accent); border-color:var(--accent)}
+button[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:#fff}
+:focus-visible{outline:3px solid var(--warm); outline-offset:3px}
+
+details{margin-top:1rem}
+summary{cursor:pointer; font-weight:600; font-size:.95rem; width:fit-content}
+pre{font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace; font-size:.8rem; line-height:1.6; background:var(--ink); color:var(--bg); padding:1rem 1.1rem; border-radius:14px; overflow-x:auto; margin:.75rem 0 0}
+
+/* Texto */
+.phrase{font-family:"Bricolage Grotesque","Arial Narrow",sans-serif; font-weight:800; font-size:clamp(2.4rem,9vw,5rem); letter-spacing:-.02em; line-height:1; text-align:center; padding:2.5rem 0; min-height:10rem; display:flex; align-items:center; justify-content:center; flex-wrap:wrap}
+
+/* Timeline */
+.track{display:flex; flex-direction:column; gap:18px; padding:.5rem 0}
+.lane{height:56px; position:relative; border-bottom:1px dashed var(--line)}
+.shape{width:56px; height:56px; position:absolute; left:0; top:0}
+.s-circle{background:var(--accent); border-radius:50%}
+.s-square{background:var(--warm); border-radius:6px}
+.s-tri{background:var(--mint); clip-path:polygon(50% 0,100% 100%,0 100%)}
+input[type=range]{flex:1 1 180px; accent-color:var(--accent); min-width:140px}
+
+/* Easing */
+.ease-row{display:grid; gap:.2rem; padding:.5rem 0; border-bottom:1px dashed var(--line)}
+.ease-row:last-child{border-bottom:0}
+.ease-name{font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace; font-size:.78rem; color:var(--muted)}
+.ease-lane{position:relative; height:24px}
+.ball{width:24px; height:24px; border-radius:50%; background:var(--accent); position:absolute; left:0; top:0}
+
+/* Stagger playground */
+.bars{display:flex; align-items:flex-end; gap:clamp(3px,1vw,8px); height:180px}
+.bar{flex:1; height:100%; background:var(--accent); border-radius:6px 6px 2px 2px; transform-origin:bottom; transform:scaleY(.12)}
+.opt-label{font-size:.85rem; color:var(--muted); font-weight:600; margin-right:.1rem}
+
+/* Morph */
+.morph-box{display:flex; justify-content:center}
+.morph-box svg{width:min(320px,80vw); height:auto; display:block; overflow:visible}
+
+/* Cartas */
+.wall{--c:6; display:grid; grid-template-columns:repeat(var(--c),1fr); gap:8px}
+.card{aspect-ratio:3/4; perspective:700px; cursor:pointer}
+.card-in{position:relative; width:100%; height:100%; transform-style:preserve-3d}
+.face{position:absolute; inset:0; border-radius:10px; -webkit-backface-visibility:hidden; backface-visibility:hidden}
+.front{background:var(--bg); display:grid; place-items:center}
+.front::after{content:""; width:22%; aspect-ratio:1; border-radius:50%; background:var(--line)}
+.back{transform:rotateY(180deg); background:linear-gradient(135deg,var(--accent),var(--pink) 50%,var(--warm)); background-size:calc(var(--c) * 100% + (var(--c) - 1) * 8px) calc(var(--r) * 100% + (var(--r) - 1) * 8px)}
+
+/* Fogos */
+.sky{position:relative; height:340px; padding:0; cursor:crosshair; touch-action:manipulation}
+.sky canvas{position:absolute; inset:0; width:100%; height:100%}
+.sky .tip{position:absolute; left:0; right:0; bottom:1rem; text-align:center; color:var(--muted); font-size:.9rem; pointer-events:none}
+
+/* Mola */
+.spring-stage{height:300px; display:grid; place-items:center; touch-action:none}
+.blob{width:120px; height:120px; border-radius:28px; background:var(--pink); cursor:grab; touch-action:none; display:grid; place-items:center; color:#fff; font-weight:700; user-select:none; box-shadow:0 10px 0 -2px color-mix(in srgb, var(--pink) 55%, #000)}
+.blob:active{cursor:grabbing}
+.anchor{position:absolute; width:14px; height:14px; border-radius:50%; border:2px dashed var(--line); left:50%; top:50%; margin:-7px 0 0 -7px}
+
+/* Números */
+.stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:1rem; align-items:center}
+.stat{padding:.5rem 0}
+.stat b{display:block; font-family:"Bricolage Grotesque","Arial Narrow",sans-serif; font-weight:800; font-size:clamp(2rem,6vw,2.8rem); line-height:1; font-variant-numeric:tabular-nums}
+.stat span{color:var(--muted); font-size:.92rem}
+.ring{position:relative; width:140px; height:140px; justify-self:center}
+.ring svg{width:100%; height:100%; transform:rotate(-90deg)}
+.ring circle{fill:none; stroke-width:12}
+.ring .bg{stroke:var(--line)}
+.ring .fg{stroke:var(--mint); stroke-linecap:round}
+.ring b{position:absolute; inset:0; display:grid; place-items:center; font-family:"Bricolage Grotesque",sans-serif; font-size:1.7rem; font-weight:800}
+
+/* SVG */
+.svg-box{position:relative; width:100%}
+.svg-box svg{display:block; width:100%; height:auto; overflow:visible}
+.svg-box path{fill:none; stroke:var(--ink); stroke-width:5; stroke-linecap:round}
+.svg-box .ghost{stroke:var(--line); stroke-width:2; stroke-dasharray:4 8}
+.rider{position:absolute; left:0; top:0; width:30px; height:30px; margin:-15px 0 0 -15px; background:var(--warm); clip-path:polygon(0 15%,100% 50%,0 85%,22% 50%)}
+
+/* Amostras */
+.samples{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:.8rem}
+.sample{background:var(--surface); border-radius:18px; aspect-ratio:1; display:flex; flex-direction:column; padding:.8rem}
+.sample .box{flex:1; display:grid; place-items:center; position:relative}
+.sample small{color:var(--muted); font-size:.8rem; text-align:center}
+.eq{display:flex; gap:5px; align-items:center; height:70px}
+.eq i{width:8px; height:100%; background:var(--accent); border-radius:4px}
+.orbit{width:78px; height:78px; position:relative}
+.orbit i{position:absolute; left:50%; top:0; width:12px; height:12px; margin-left:-6px; border-radius:50%; background:var(--pink); transform-origin:6px 39px}
+.sq{display:grid; grid-template-columns:repeat(3,18px); gap:6px}
+.sq i{width:18px; height:18px; background:var(--mint); border-radius:4px}
+.ringload{width:74px; height:74px}
+.ringload circle{fill:none; stroke:var(--warm); stroke-width:8; stroke-linecap:round}
+.bounce{width:34px; height:34px; border-radius:50%; background:var(--accent); transform-origin:50% 100%; position:relative; top:22px}
+.floor{position:absolute; bottom:18%; width:50px; height:4px; border-radius:2px; background:var(--line)}
+.wave{display:flex; gap:6px}
+.wave i{width:9px; height:9px; border-radius:50%; background:var(--ink)}
+.cube-wrap{perspective:300px}
+.cube{width:44px; height:44px; position:relative; transform-style:preserve-3d}
+.cube i{position:absolute; inset:0; border:2px solid var(--accent); background:color-mix(in srgb, var(--accent) 18%, transparent)}
+.cube i:nth-child(1){transform:translateZ(22px)} .cube i:nth-child(2){transform:rotateY(180deg) translateZ(22px)}
+.cube i:nth-child(3){transform:rotateY(90deg) translateZ(22px)} .cube i:nth-child(4){transform:rotateY(-90deg) translateZ(22px)}
+.cube i:nth-child(5){transform:rotateX(90deg) translateZ(22px)} .cube i:nth-child(6){transform:rotateX(-90deg) translateZ(22px)}
+.typing{display:flex; gap:7px}
+.typing i{width:12px; height:12px; border-radius:50%; background:var(--muted)}
+
+footer{padding:3rem 0; margin-top:3rem; border-top:1px solid var(--line); color:var(--muted); font-size:.9rem}
+footer a{color:var(--ink)}
+
+@media (max-width:560px){
+  header{padding-top:2rem}
+  .stage{padding:1rem; border-radius:16px}
+  .wall{--c:4}
+  .sky{height:300px}
+}
+</style>
+</head>
+<body>
+
+<nav aria-label="Experimentos"><div class="wrap">
+  <a href="#s-letras">Letras</a><a href="#s-tl">Linha do tempo</a><a href="#s-curvas">Curvas</a><a href="#s-stagger">Stagger</a><a href="#s-morph">Morph</a><a href="#s-cartas">Cartas</a><a href="#s-fogos">Fogos</a><a href="#s-mola">Mola</a><a href="#s-numeros">Números</a><a href="#s-svg">Caminho SVG</a><a href="#s-amostras">Amostras</a>
+</div></nav>
+
+<div class="wrap">
+
+<header>
+  <h1 id="title" title="Toque para espalhar as letras">Laboratório de movimento</h1>
+  <p class="lede">Onze experimentos com a biblioteca anime.js. Toque no título, na grade, nas cartas, no céu — quase tudo aqui responde a você.</p>
+  <div class="grid" id="grid" aria-label="Grade de pontos: toque em um ponto para criar uma onda"></div>
+  <div class="hint">
+    <span>Toque em qualquer ponto para soltar uma onda.</span>
+    <button id="rippleCenter">Onda do centro</button>
+    <button id="rippleRandom">Chuva de ondas</button>
+  </div>
+</header>
+
+<section id="s-letras" aria-labelledby="h-letras">
+  <h2 id="h-letras">Letras com personalidade</h2>
+  <p>Cada letra é um alvo independente. O mesmo texto ganha quatro comportamentos diferentes só mudando propriedades, atrasos e curvas.</p>
+  <div class="stage"><div class="phrase" id="phrase">Tudo se move</div></div>
+  <div class="controls">
+    <button class="primary" data-fx="wave">Onda</button>
+    <button data-fx="drop">Queda</button>
+    <button data-fx="scramble">Embaralhar</button>
+    <button data-fx="explode">Explodir</button>
+    <button data-fx="flip">Girar</button>
+  </div>
+</section>
+
+<section id="s-tl" aria-labelledby="h-tl">
+  <h2 id="h-tl">Linha do tempo</h2>
+  <p>Três animações encadeadas numa única <code>timeline</code>, com sobreposição entre elas. Arraste o controle para avançar e voltar quadro a quadro.</p>
+  <div class="stage">
+    <div class="track" id="track">
+      <div class="lane"><div class="shape s-circle"></div></div>
+      <div class="lane"><div class="shape s-square"></div></div>
+      <div class="lane"><div class="shape s-tri"></div></div>
+    </div>
+  </div>
+  <div class="controls">
+    <button class="primary" id="tlPlay">Tocar</button>
+    <button id="tlRestart">Recomeçar</button>
+    <button id="tlReverse">Inverter</button>
+    <input type="range" id="tlRange" min="0" max="100" step="0.1" value="0" aria-label="Posição na linha do tempo">
+  </div>
+  <details><summary>Ver código</summary>
+<pre>const tl = anime.timeline({ autoplay: false, easing: 'easeOutExpo' });
+tl.add({ targets: '.s-circle', translateX: dist, duration: 900 })
+  .add({ targets: '.s-square', translateX: dist, rotate: 180,
+         borderRadius: ['6px', '28px'], duration: 900 }, '-=600')
+  .add({ targets: '.s-tri', translateX: dist,
+         scale: [1, 1.4, 1], duration: 900 }, '-=600');
+
+range.oninput = () =&gt; tl.seek(tl.duration * range.value / 100);</pre>
+  </details>
+</section>
+
+<section id="s-curvas" aria-labelledby="h-curvas">
+  <h2 id="h-curvas">Curvas de aceleração</h2>
+  <p>Mesma distância, mesma duração, curvas diferentes. É a curva que dá personalidade ao movimento. A mola ignora a duração e calcula a própria.</p>
+  <div class="stage" id="easeStage"></div>
+  <div class="controls"><button class="primary" id="easeRun">Correr</button></div>
+</section>
+
+<section id="s-stagger" aria-labelledby="h-stagger">
+  <h2 id="h-stagger">Parque do stagger</h2>
+  <p>O <code>anime.stagger</code> distribui atrasos entre vários elementos. Escolha de onde a onda parte, inverta o sentido ou acelere a distribuição com uma curva.</p>
+  <div class="stage"><div class="bars" id="bars"></div></div>
+  <div class="controls" id="staggerOpts">
+    <span class="opt-label">Origem</span>
+    <button data-from="first" aria-pressed="true">Início</button>
+    <button data-from="center" aria-pressed="false">Centro</button>
+    <button data-from="last" aria-pressed="false">Fim</button>
+    <button data-from="random" aria-pressed="false">Sorteio</button>
+    <span class="sep"></span>
+    <button id="stDir" aria-pressed="false">Sentido inverso</button>
+    <button id="stEase" aria-pressed="false">Distribuição acelerada</button>
+  </div>
+  <div class="controls"><button class="primary" id="stRun">Disparar</button></div>
+  <details><summary>Ver código</summary>
+<pre>anime({
+  targets: '.bar',
+  keyframes: [{ scaleY: 1, duration: 300 }, { scaleY: 0.12, duration: 700 }],
+  delay: anime.stagger(40, { from: 'center', direction: 'reverse',
+                              easing: 'easeInQuad' })
+});</pre>
+  </details>
+</section>
+
+<section id="s-morph" aria-labelledby="h-morph">
+  <h2 id="h-morph">Morph de formas</h2>
+  <p>Um único polígono de 72 pontos se transforma em outras formas animando o atributo <code>points</code>. Como todas têm o mesmo número de pontos, o anime.js interpola cada coordenada.</p>
+  <div class="stage morph-box">
+    <svg viewBox="0 0 240 240" aria-label="Forma que se transforma"><polygon id="morph"/></svg>
+  </div>
+  <div class="controls" id="morphBtns"></div>
+  <div class="controls"><button class="primary" id="morphCycle">Ciclar formas</button></div>
+</section>
+
+<section id="s-cartas" aria-labelledby="h-cartas">
+  <h2 id="h-cartas">Parede de cartas</h2>
+  <p>Toque em uma carta: o giro em 3D se espalha pela parede a partir dela. O verso de cada carta é um pedaço de uma imagem maior que só aparece inteira no fim.</p>
+  <div class="stage"><div class="wall" id="wall"></div></div>
+  <div class="controls"><button class="primary" id="wallRun">Virar do centro</button></div>
+</section>
+
+<section id="s-fogos" aria-labelledby="h-fogos">
+  <h2 id="h-fogos">Fogos em canvas</h2>
+  <p>O anime.js não anima só o DOM: aqui ele anima objetos JavaScript comuns (posição, raio, opacidade) e um <code>canvas</code> desenha o resultado a cada quadro.</p>
+  <div class="stage sky" id="sky"><canvas id="canvas"></canvas><span class="tip">Toque no céu</span></div>
+  <div class="controls"><button class="primary" id="fwShow">Show de fogos</button></div>
+</section>
+
+<section id="s-mola" aria-labelledby="h-mola">
+  <h2 id="h-mola">Física de mola</h2>
+  <p>Arraste o bloco e solte. Ele volta ao centro com a curva <code>spring(massa, rigidez, amortecimento, velocidade)</code>. Troque o tipo de mola e sinta a diferença.</p>
+  <div class="stage spring-stage" id="springStage"><span class="anchor"></span><div class="blob" id="blob">Arraste</div></div>
+  <div class="controls" id="springOpts">
+    <button data-spring="1, 100, 18, 0" aria-pressed="false">Firme</button>
+    <button data-spring="1, 80, 8, 0" aria-pressed="true">Elástica</button>
+    <button data-spring="3, 40, 6, 0" aria-pressed="false">Pesada</button>
+    <button data-spring="0.6, 160, 4, 0" aria-pressed="false">Nervosa</button>
+  </div>
+</section>
+
+<section id="s-numeros" aria-labelledby="h-numeros">
+  <h2 id="h-numeros">Números que contam</h2>
+  <p>Animar um objeto como <code>{ valor: 0 }</code> e escrever o resultado no <code>update</code> vira um contador. Os números abaixo são de exemplo, sorteados a cada clique.</p>
+  <div class="stage">
+    <div class="stats">
+      <div class="stat"><b id="n1">0</b><span>visitantes no mês</span></div>
+      <div class="stat"><b id="n2">R$ 0</b><span>receita no período</span></div>
+      <div class="ring"><svg viewBox="0 0 120 120"><circle class="bg" cx="60" cy="60" r="52"/><circle class="fg" id="ringFg" cx="60" cy="60" r="52"/></svg><b id="n3">0%</b></div>
+    </div>
+  </div>
+  <div class="controls"><button class="primary" id="numRun">Sortear números</button></div>
+  <details><summary>Ver código</summary>
+<pre>const dados = { visitantes: 0 };
+anime({
+  targets: dados, visitantes: 48213, round: 1,
+  duration: 1800, easing: 'easeOutExpo',
+  update: () =&gt; el.textContent = dados.visitantes.toLocaleString('pt-BR')
+});</pre>
+  </details>
+</section>
+
+<section id="s-svg" aria-labelledby="h-svg">
+  <h2 id="h-svg">Traçado e caminho em SVG</h2>
+  <p>A linha é desenhada animando o <code>strokeDashoffset</code>, e a seta segue o mesmo caminho com <code>anime.path</code>, girando conforme a curva.</p>
+  <div class="stage">
+    <div class="svg-box">
+      <svg viewBox="0 0 600 240" aria-hidden="true">
+        <path class="ghost" d="M20 190 C 110 20, 200 20, 250 120 S 360 250, 420 130 S 540 10, 580 70"/>
+        <path id="motionPath" d="M20 190 C 110 20, 200 20, 250 120 S 360 250, 420 130 S 540 10, 580 70"/>
+      </svg>
+      <div class="rider" id="rider"></div>
+    </div>
+  </div>
+  <div class="controls"><button class="primary" id="svgRun">Desenhar</button></div>
+</section>
+
+<section id="s-amostras" aria-labelledby="h-amostras">
+  <h2 id="h-amostras">Amostras em loop</h2>
+  <p>Oito carregadores e micro-animações feitos com poucas linhas cada. Eles só rodam enquanto esta seção está visível na tela.</p>
+  <div class="samples">
+    <div class="sample"><div class="box"><div class="eq" id="ld-eq"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div><small>stagger do centro</small></div>
+    <div class="sample"><div class="box"><div class="orbit" id="ld-orbit"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div><small>rotação contínua</small></div>
+    <div class="sample"><div class="box"><div class="sq" id="ld-sq"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div><small>stagger em grade</small></div>
+    <div class="sample"><div class="box"><svg class="ringload" id="ld-ring" viewBox="0 0 80 80"><circle cx="40" cy="40" r="32"/></svg></div><small>traçado em loop</small></div>
+    <div class="sample"><div class="box"><div class="bounce" id="ld-bounce"></div><span class="floor"></span></div><small>keyframes com amassado</small></div>
+    <div class="sample"><div class="box"><div class="wave" id="ld-wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div><small>onda alternada</small></div>
+    <div class="sample"><div class="box"><div class="cube-wrap"><div class="cube" id="ld-cube"><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div><small>cubo 3D em CSS</small></div>
+    <div class="sample"><div class="box"><div class="typing" id="ld-typing"><i></i><i></i><i></i></div></div><small>digitando…</small></div>
+  </div>
+</section>
+
+<footer>
+  Feito com <a href="https://animejs.com" target="_blank" rel="noopener">anime.js</a> 3.2.1 — um único arquivo HTML, pronto para GitHub Pages.
+</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+<script>
+(function(){
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const $ = s => document.querySelector(s);
+  const $$ = s => document.querySelectorAll(s);
+
+  function splitLetters(el, wrapWords){
+    const words = el.textContent.trim().split(' ');
+    el.innerHTML = words.map(w => {
+      const letters = [...w].map(c => '<span class="ch" data-c="' + c + '">' + c + '</span>').join('');
+      return wrapWords ? '<span class="word">' + letters + '</span>' : letters;
+    }).join(wrapWords ? ' ' : '<span class="ch sp">&nbsp;</span>');
+    return el.querySelectorAll('.ch:not(.sp)');
+  }
+
+  /* ===== Título ===== */
+  const title = $('#title');
+  const titleChs = splitLetters(title, true);
+  function scatter(){
+    anime.remove(titleChs);
+    anime.timeline()
+      .add({ targets: titleChs, translateX: () => anime.random(-180, 180), translateY: () => anime.random(-140, 140),
+             rotate: () => anime.random(-200, 200), scale: () => anime.random(4, 16) / 10, duration: 650, easing: 'easeOutExpo' })
+      .add({ targets: titleChs, translateX: 0, translateY: 0, rotate: 0, scale: 1,
+             delay: anime.stagger(22), easing: 'spring(1, 70, 11, 0)' });
+  }
+  title.addEventListener('click', scatter);
+
+  /* ===== Grade ===== */
+  const grid = $('#grid');
+  let cols = 0, rows = 0;
+  function buildGrid(){
+    const narrow = grid.clientWidth < 560;
+    const nc = narrow ? 11 : 17, nr = narrow ? 11 : 9;
+    if (nc === cols && nr === rows) return;
+    cols = nc; rows = nr;
+    grid.style.setProperty('--cols', cols);
+    const frag = document.createDocumentFragment();
+    for (let i = 0; i < cols * rows; i++){ const d = document.createElement('div'); d.className = 'dot'; d.dataset.i = i; frag.appendChild(d); }
+    grid.replaceChildren(frag);
+  }
+  function ripple(index, color){
+    const dots = grid.querySelectorAll('.dot');
+    anime.remove(dots);
+    anime({
+      targets: dots,
+      keyframes: [
+        { scale: 0.2, translateY: -10, backgroundColor: color || css('--accent'), duration: 250 },
+        { scale: 1, translateY: 0, backgroundColor: css('--ink'), duration: 700 }
+      ],
+      delay: anime.stagger(reduce ? 0 : 45, { grid: [cols, rows], from: index }),
+      easing: 'easeOutSine',
+      complete: () => dots.forEach(d => d.style.backgroundColor = '')
+    });
+  }
+  grid.addEventListener('click', e => { const d = e.target.closest('.dot'); if (d) ripple(+d.dataset.i); });
+  $('#rippleCenter').onclick = () => ripple('center');
+  $('#rippleRandom').onclick = () => {
+    const colors = ['--accent', '--pink', '--warm', '--mint'];
+    colors.forEach((c, k) => setTimeout(() => ripple(anime.random(0, cols * rows - 1), css(c)), k * 380));
+  };
+
+  /* ===== Letras ===== */
+  const phrase = $('#phrase');
+  const pChs = splitLetters(phrase, false);
+  const glyphs = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#%&@*+=?0123456789';
+  const fx = {
+    wave(){ anime({ targets: pChs, keyframes: [{ translateY: -40, duration: 280, easing: 'easeOutQuad' }, { translateY: 0, duration: 900, easing: 'easeOutElastic(1, .45)' }], delay: anime.stagger(55) }); },
+    drop(){ anime({ targets: pChs, translateY: [-260, 0], opacity: [0, 1], rotate: [() => anime.random(-40, 40), 0], duration: 1300, easing: 'easeOutBounce', delay: anime.stagger(70, { from: 'center' }) }); },
+    scramble(){
+      pChs.forEach((el, i) => {
+        const o = { t: 0 }, orig = el.dataset.c;
+        anime({ targets: o, t: 1, duration: 700, delay: i * 55, easing: 'linear',
+          update: () => { el.textContent = o.t < 1 ? glyphs[Math.floor(Math.random() * glyphs.length)] : orig; },
+          complete: () => { el.textContent = orig; } });
+      });
+    },
+    explode(){
+      anime.timeline()
+        .add({ targets: pChs, translateX: () => anime.random(-220, 220), translateY: () => anime.random(-160, 160), rotate: () => anime.random(-360, 360), scale: () => anime.random(3, 20) / 10, opacity: .35, duration: 600, easing: 'easeOutExpo' })
+        .add({ targets: pChs, translateX: 0, translateY: 0, rotate: 0, scale: 1, opacity: 1, duration: 1100, delay: anime.stagger(40, { from: 'last' }), easing: 'easeInOutBack' });
+    },
+    flip(){ anime({ targets: pChs, rotateY: [0, 360], color: [css('--accent'), css('--ink')], duration: 1100, delay: anime.stagger(60), easing: 'easeInOutCubic', complete: () => pChs.forEach(c => c.style.color = '') }); }
+  };
+  $$('[data-fx]').forEach(b => b.onclick = () => { anime.remove(pChs); anime.set(pChs, { translateX: 0, translateY: 0, rotate: 0, rotateY: 0, scale: 1, opacity: 1 }); fx[b.dataset.fx](); });
+
+  /* ===== Timeline ===== */
+  const track = $('#track'), range = $('#tlRange'), playBtn = $('#tlPlay');
+  let tl;
+  function buildTimeline(){
+    const progress = tl ? tl.progress : 0;
+    const wasReversed = tl ? tl.reversed : false;
+    if (tl) tl.pause();
+    anime.remove('.shape');
+    anime.set('.shape', { translateX: 0, rotate: 0, scale: 1 });
+    anime.set('.s-square', { borderRadius: '6px' });
+    const dist = track.clientWidth - 56;
+    tl = anime.timeline({ autoplay: false, easing: 'easeOutExpo',
+      update: a => { range.value = a.progress; },
+      complete: () => { playBtn.textContent = 'Tocar'; } });
+    tl.add({ targets: '.s-circle', translateX: dist, duration: 900 })
+      .add({ targets: '.s-square', translateX: dist, rotate: 180, borderRadius: ['6px', '28px'], duration: 900 }, '-=600')
+      .add({ targets: '.s-tri', translateX: dist, scale: [1, 1.4, 1], duration: 900 }, '-=600');
+    if (wasReversed) tl.reverse();
+    tl.seek(tl.duration * progress / 100);
+  }
+  playBtn.onclick = () => {
+    if (!tl.paused){ tl.pause(); playBtn.textContent = 'Tocar'; return; }
+    if (tl.completed) tl.restart(); else tl.play();
+    playBtn.textContent = 'Pausar';
+  };
+  $('#tlRestart').onclick = () => { tl.restart(); playBtn.textContent = 'Pausar'; };
+  $('#tlReverse').onclick = () => { tl.reverse(); if (tl.paused){ tl.play(); } playBtn.textContent = 'Pausar'; };
+  range.addEventListener('input', () => { tl.pause(); playBtn.textContent = 'Tocar'; tl.seek(tl.duration * range.value / 100); });
+
+  /* ===== Curvas ===== */
+  const eases = ['linear', 'easeInOutQuad', 'easeInExpo', 'easeOutCirc', 'easeInOutBack', 'easeOutElastic(1, .5)', 'easeOutBounce', 'steps(6)', 'spring(1, 80, 10, 0)'];
+  const easeStage = $('#easeStage');
+  const lanes = eases.map((ease, i) => {
+    const row = document.createElement('div');
+    row.className = 'ease-row';
+    row.innerHTML = '<span class="ease-name">' + ease + '</span><div class="ease-lane"><div class="ball"></div></div>';
+    easeStage.appendChild(row);
+    const ball = row.querySelector('.ball');
+    ball.style.background = 'var(' + ['--accent', '--pink', '--warm', '--mint'][i % 4] + ')';
+    return { ease, lane: row.querySelector('.ease-lane'), ball };
+  });
+  let forward = true;
+  const easeBtn = $('#easeRun');
+  easeBtn.onclick = () => {
+    lanes.forEach(({ ease, lane, ball }) => {
+      anime.remove(ball);
+      anime({ targets: ball, translateX: forward ? lane.clientWidth - ball.offsetWidth : 0, duration: 1600, easing: ease });
+    });
+    forward = !forward;
+    easeBtn.textContent = forward ? 'Correr' : 'Voltar';
+  };
+
+  /* ===== Stagger ===== */
+  const barsEl = $('#bars');
+  for (let i = 0; i < 23; i++){ const b = document.createElement('div'); b.className = 'bar'; barsEl.appendChild(b); }
+  const bars = barsEl.children;
+  let stFrom = 'first', stRev = false, stEase = false;
+  $$('#staggerOpts [data-from]').forEach(b => b.onclick = () => {
+    stFrom = b.dataset.from;
+    $$('#staggerOpts [data-from]').forEach(x => x.setAttribute('aria-pressed', x === b));
+    runStagger();
+  });
+  const toggle = (id, fn) => { const b = $(id); b.onclick = () => { const v = b.getAttribute('aria-pressed') !== 'true'; b.setAttribute('aria-pressed', v); fn(v); runStagger(); }; };
+  toggle('#stDir', v => stRev = v);
+  toggle('#stEase', v => stEase = v);
+  function runStagger(){
+    anime.remove(bars);
+    const from = stFrom === 'random' ? anime.random(0, bars.length - 1) : stFrom;
+    const opts = { from, direction: stRev ? 'reverse' : 'normal' };
+    if (stEase) opts.easing = 'easeInQuad';
+    anime({ targets: bars,
+      keyframes: [{ scaleY: 1, backgroundColor: css('--pink'), duration: 300, easing: 'easeOutQuad' }, { scaleY: .12, backgroundColor: css('--accent'), duration: 800, easing: 'easeOutElastic(1, .6)' }],
+      delay: anime.stagger(stEase ? 90 : 40, opts) });
+  }
+  $('#stRun').onclick = runStagger;
+
+  /* ===== Morph ===== */
+  const N = 72, C = 120;
+  const polar = f => { const p = []; for (let i = 0; i < N; i++){ const a = -Math.PI / 2 + i / N * Math.PI * 2; const r = f(a); p.push((C + r * Math.cos(a)).toFixed(2) + ',' + (C + r * Math.sin(a)).toFixed(2)); } return p.join(' '); };
+  const polygonR = (n, R, rot) => a => { const seg = 2 * Math.PI / n; let u = (a + Math.PI / 2 + (rot || 0)) % seg; if (u < 0) u += seg; return R * Math.cos(Math.PI / n) / Math.cos(u - Math.PI / n); };
+  const starR = (n, R, r) => a => { const seg = Math.PI / n; let u = (a + Math.PI / 2) % (2 * seg); if (u < 0) u += 2 * seg; const t = u < seg ? u / seg : 2 - u / seg; return R + (r - R) * t; };
+  const heart = () => { const p = []; for (let i = 0; i < N; i++){ const t = i / N * Math.PI * 2; const x = 16 * Math.pow(Math.sin(t), 3); const y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t); p.push((C + x * 5.6).toFixed(2) + ',' + (C - 10 - y * 5.6).toFixed(2)); } return p.join(' '); };
+  const shapes = [
+    { nome: 'Círculo', pts: polar(() => 95), cor: '--accent' },
+    { nome: 'Estrela', pts: polar(starR(5, 108, 46)), cor: '--warm' },
+    { nome: 'Coração', pts: heart(), cor: '--pink' },
+    { nome: 'Flor', pts: polar(a => 72 + 30 * Math.cos(6 * (a + Math.PI / 2))), cor: '--mint' },
+    { nome: 'Triângulo', pts: polar(polygonR(3, 112)), cor: '--accent' },
+    { nome: 'Quadrado', pts: polar(polygonR(4, 118, Math.PI / 4)), cor: '--warm' },
+    { nome: 'Engrenagem', pts: polar(a => 88 + 14 * Math.sign(Math.sin(10 * a)) ), cor: '--ink' }
+  ];
+  const morph = $('#morph');
+  morph.setAttribute('points', shapes[0].pts);
+  morph.setAttribute('fill', css(shapes[0].cor));
+  let morphIdx = 0, cycling = null;
+  function morphTo(i){
+    morphIdx = i;
+    anime.remove(morph);
+    anime({ targets: morph, points: [{ value: shapes[i].pts }], fill: css(shapes[i].cor), duration: 1100, easing: 'easeOutElastic(1, .6)' });
+    $$('#morphBtns button').forEach((b, k) => b.setAttribute('aria-pressed', k === i));
+  }
+  shapes.forEach((s, i) => { const b = document.createElement('button'); b.textContent = s.nome; b.setAttribute('aria-pressed', i === 0); b.onclick = () => { stopCycle(); morphTo(i); }; $('#morphBtns').appendChild(b); });
+  const cycleBtn = $('#morphCycle');
+  function stopCycle(){ clearInterval(cycling); cycling = null; cycleBtn.textContent = 'Ciclar formas'; }
+  cycleBtn.onclick = () => {
+    if (cycling){ stopCycle(); return; }
+    morphTo((morphIdx + 1) % shapes.length);
+    cycling = setInterval(() => morphTo((morphIdx + 1) % shapes.length), 1500);
+    cycleBtn.textContent = 'Parar';
+  };
+
+  /* ===== Cartas ===== */
+  const wall = $('#wall');
+  let wc = 0, wr = 0, flipped = false;
+  function buildWall(){
+    const narrow = wall.clientWidth < 520;
+    const c = narrow ? 4 : 6, r = narrow ? 5 : 4;
+    if (c === wc && r === wr) return;
+    wc = c; wr = r; flipped = false;
+    wall.style.setProperty('--c', c); wall.style.setProperty('--r', r);
+    wall.innerHTML = '';
+    for (let i = 0; i < c * r; i++){
+      const x = i % c, y = Math.floor(i / c);
+      const card = document.createElement('div');
+      card.className = 'card'; card.dataset.i = i;
+      card.innerHTML = '<div class="card-in"><div class="face front"></div><div class="face back"></div></div>';
+      const back = card.querySelector('.back');
+      back.style.backgroundPosition = (c > 1 ? x / (c - 1) * 100 : 0) + '% ' + (r > 1 ? y / (r - 1) * 100 : 0) + '%';
+      wall.appendChild(card);
+    }
+  }
+  function flipWall(from){
+    flipped = !flipped;
+    const inners = wall.querySelectorAll('.card-in');
+    anime.remove(inners);
+    anime({ targets: inners, rotateY: flipped ? 180 : 0,
+      scale: [{ value: .85, duration: 300 }, { value: 1, duration: 500 }],
+      duration: 800, easing: 'easeInOutSine',
+      delay: anime.stagger(reduce ? 0 : 70, { grid: [wc, wr], from }) });
+  }
+  wall.addEventListener('click', e => { const c = e.target.closest('.card'); if (c) flipWall(+c.dataset.i); });
+  $('#wallRun').onclick = () => flipWall('center');
+
+  /* ===== Fogos ===== */
+  const sky = $('#sky'), canvas = $('#canvas'), ctx = canvas.getContext('2d');
+  let particles = [], running = false;
+  function sizeCanvas(){ const dpr = window.devicePixelRatio || 1; canvas.width = sky.clientWidth * dpr; canvas.height = sky.clientHeight * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); }
+  function render(){
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles.forEach(p => { ctx.globalAlpha = p.alpha; ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(p.radius, 0), 0, Math.PI * 2); if (p.ring){ ctx.strokeStyle = p.color; ctx.lineWidth = p.lineWidth; ctx.stroke(); } else { ctx.fillStyle = p.color; ctx.fill(); } });
+    ctx.globalAlpha = 1;
+    if (particles.length) requestAnimationFrame(render); else running = false;
+  }
+  function burst(x, y){
+    const palette = [css('--accent'), css('--pink'), css('--warm'), css('--mint')];
+    const group = [];
+    const ring = { x, y, radius: 0.1, alpha: .6, lineWidth: 6, color: css('--ink'), ring: true };
+    group.push(ring);
+    for (let i = 0; i < 34; i++){
+      const a = anime.random(0, 360) * Math.PI / 180, d = anime.random(50, 150);
+      group.push({ x, y, radius: anime.random(4, 9), alpha: 1, color: palette[anime.random(0, 3)], tx: x + Math.cos(a) * d, ty: y + Math.sin(a) * d });
+    }
+    particles.push(...group);
+    const dots = group.slice(1);
+    const done = () => { particles = particles.filter(p => !group.includes(p)); };
+    anime.timeline()
+      .add({ targets: dots, x: p => p.tx, y: p => p.ty, radius: .1, duration: () => anime.random(1100, 1700), easing: 'easeOutExpo' })
+      .add({ targets: ring, radius: () => anime.random(60, 90), lineWidth: 0, alpha: { value: 0, easing: 'linear', duration: () => anime.random(600, 800) }, duration: () => anime.random(1100, 1500), easing: 'easeOutExpo', complete: done }, 0);
+    if (!running){ running = true; requestAnimationFrame(render); }
+  }
+  sky.addEventListener('pointerdown', e => { const r = sky.getBoundingClientRect(); burst(e.clientX - r.left, e.clientY - r.top); });
+  $('#fwShow').onclick = () => { for (let k = 0; k < 8; k++) setTimeout(() => burst(anime.random(40, sky.clientWidth - 40), anime.random(40, sky.clientHeight - 90)), k * 260); };
+
+  /* ===== Mola ===== */
+  const blob = $('#blob');
+  let springEase = 'spring(1, 80, 8, 0)', drag = null;
+  $$('#springOpts button').forEach(b => b.onclick = () => {
+    springEase = 'spring(' + b.dataset.spring + ')';
+    $$('#springOpts button').forEach(x => x.setAttribute('aria-pressed', x === b));
+    anime.remove(blob);
+    anime.set(blob, { translateX: 110, rotate: 12 });
+    anime({ targets: blob, translateX: 0, rotate: 0, easing: springEase });
+  });
+  blob.addEventListener('pointerdown', e => {
+    anime.remove(blob);
+    const tx = +anime.get(blob, 'translateX').replace('px', '') || 0, ty = +anime.get(blob, 'translateY').replace('px', '') || 0;
+    drag = { sx: e.clientX - tx, sy: e.clientY - ty, lx: e.clientX };
+    blob.setPointerCapture(e.pointerId);
+    blob.textContent = 'Solte';
+  });
+  blob.addEventListener('pointermove', e => {
+    if (!drag) return;
+    const x = e.clientX - drag.sx, y = e.clientY - drag.sy, v = e.clientX - drag.lx;
+    drag.lx = e.clientX;
+    anime.set(blob, { translateX: x, translateY: y, rotate: Math.max(-25, Math.min(25, v * 1.5)), scale: 1.06 });
+  });
+  const release = () => {
+    if (!drag) return;
+    drag = null; blob.textContent = 'Arraste';
+    anime({ targets: blob, translateX: 0, translateY: 0, rotate: 0, scale: 1, easing: springEase });
+  };
+  blob.addEventListener('pointerup', release);
+  blob.addEventListener('pointercancel', release);
+
+  /* ===== Números ===== */
+  const nums = { visitantes: 0, receita: 0, conversao: 0 };
+  const Circ = 2 * Math.PI * 52, ringFg = $('#ringFg');
+  ringFg.style.strokeDasharray = Circ; ringFg.style.strokeDashoffset = Circ;
+  const brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+  function drawNums(){
+    $('#n1').textContent = Math.round(nums.visitantes).toLocaleString('pt-BR');
+    $('#n2').textContent = brl.format(nums.receita);
+    $('#n3').textContent = nums.conversao.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
+    ringFg.style.strokeDashoffset = Circ * (1 - nums.conversao / 100);
+  }
+  function runNums(){
+    anime.remove(nums);
+    anime({ targets: nums, visitantes: anime.random(8000, 95000), receita: anime.random(40000, 900000), conversao: anime.random(80, 950) / 10,
+      duration: 2000, easing: 'easeOutExpo', update: drawNums });
+  }
+  $('#numRun').onclick = runNums;
+
+  /* ===== SVG ===== */
+  const path = $('#motionPath'), rider = $('#rider');
+  function drawPath(){
+    anime.remove([path, rider]);
+    const p = anime.path(path);
+    anime({ targets: path, strokeDashoffset: [anime.setDashoffset, 0], duration: 2200, easing: 'easeInOutSine' });
+    anime({ targets: rider, translateX: p('x'), translateY: p('y'), rotate: p('angle'), duration: 2200, easing: 'easeInOutSine' });
+  }
+  $('#svgRun').onclick = drawPath;
+  function placeRiderAtEnd(){
+    const p = anime.path(path);
+    anime({ targets: rider, translateX: p('x'), translateY: p('y'), rotate: p('angle'), duration: 1, autoplay: false }).seek(1);
+  }
+
+  /* ===== Amostras ===== */
+  anime.set('#ld-orbit i', { rotate: (el, i) => i * 45 });
+  const loops = [
+    anime({ targets: '#ld-eq i', scaleY: [.25, 1], duration: 450, delay: anime.stagger(90, { from: 'center' }), direction: 'alternate', loop: true, easing: 'easeInOutSine', autoplay: false }),
+    anime({ targets: '#ld-orbit', rotate: 360, duration: 3200, loop: true, easing: 'linear', autoplay: false }),
+    anime({ targets: '#ld-orbit i', scale: [1, .35], duration: 500, delay: anime.stagger(100), direction: 'alternate', loop: true, easing: 'easeInOutQuad', autoplay: false }),
+    anime({ targets: '#ld-sq i', scale: [1, .2], rotate: [0, 90], borderRadius: ['4px', '9px'], duration: 600, delay: anime.stagger(110, { grid: [3, 3], from: 'center' }), direction: 'alternate', loop: true, easing: 'easeInOutQuad', autoplay: false }),
+    anime({ targets: '#ld-ring circle', strokeDashoffset: [anime.setDashoffset, 0], duration: 1200, direction: 'alternate', loop: true, easing: 'easeInOutCubic', autoplay: false }),
+    anime({ targets: '#ld-ring', rotate: 360, duration: 2400, loop: true, easing: 'linear', autoplay: false }),
+    anime({ targets: '#ld-bounce', keyframes: [
+        { translateY: -62, scaleX: .9, scaleY: 1.1, duration: 380, easing: 'easeOutQuad' },
+        { translateY: 0, scaleX: 1, scaleY: 1, duration: 380, easing: 'easeInQuad' },
+        { scaleX: 1.35, scaleY: .65, duration: 110, easing: 'easeOutQuad' },
+        { scaleX: 1, scaleY: 1, duration: 160, easing: 'easeOutQuad' } ], loop: true, autoplay: false }),
+    anime({ targets: '#ld-wave i', translateY: [-16, 16], duration: 600, delay: anime.stagger(90), direction: 'alternate', loop: true, easing: 'easeInOutSine', autoplay: false }),
+    anime({ targets: '#ld-cube', rotateX: [-20, 340], rotateY: [30, 390], duration: 5000, loop: true, easing: 'linear', autoplay: false }),
+    anime({ targets: '#ld-typing i', translateY: [0, -9, 0], opacity: [.4, 1, .4], duration: 900, delay: anime.stagger(150), endDelay: 300, loop: true, easing: 'easeInOutSine', autoplay: false })
+  ];
+  if (!reduce && 'IntersectionObserver' in window){
+    new IntersectionObserver(es => es.forEach(e => loops.forEach(l => e.isIntersecting ? l.play() : l.pause())), { threshold: .15 }).observe($('#s-amostras'));
+  }
+
+  /* ===== Início ===== */
+  buildGrid(); buildTimeline(); buildWall(); sizeCanvas(); drawNums();
+  if (reduce){
+    title.classList.add('loaded');
+    placeRiderAtEnd();
+  } else {
+    anime.timeline({ easing: 'easeOutExpo' })
+      .add({ targets: titleChs, translateY: ['110%', 0], rotate: [8, 0], duration: 1100, delay: anime.stagger(28), complete: () => title.classList.add('loaded') })
+      .add({ targets: '.lede', opacity: [0, 1], translateY: [12, 0], duration: 800, begin: () => ripple('center') }, '-=800');
+    drawPath();
+  }
+
+  /* Dispara algumas seções quando entram na tela pela primeira vez */
+  if (!reduce && 'IntersectionObserver' in window){
+    const once = { 's-numeros': runNums, 's-letras': () => fx.wave(), 's-stagger': runStagger };
+    const io = new IntersectionObserver(es => es.forEach(e => {
+      if (e.isIntersecting && once[e.target.id]){ once[e.target.id](); delete once[e.target.id]; io.unobserve(e.target); }
+    }), { threshold: .45 });
+    Object.keys(once).forEach(id => io.observe(document.getElementById(id)));
+  }
+
+  let rt;
+  window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { buildGrid(); buildTimeline(); buildWall(); sizeCanvas(); placeRiderAtEnd(); }, 150); });
+})();
+</script>
+</body>
+</html>
